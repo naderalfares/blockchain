@@ -1,0 +1,4 @@
+TRANSACTIONS_PER_BLOCK = 10
+
+HOST = "localhost"
+PORT = 65432
