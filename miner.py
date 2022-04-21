@@ -4,17 +4,53 @@ import _thread
 import socket
 import time
 import Blockchain
+import random
 
 # GLOBAL VARIABLES
 PENDING_TRANSACTIONS = []
-BLOCKCAHIN = Blockchain()
+BLOCKCAHIN = Blockchain.Blockchain()
 
 def miner(transactions):
     # TODO:
     # Create a new block and add transactions to the new block
     # perform proof of work
-    # advertise to other miners 
-    pass
+    # advertise to other miners
+    global BLOCKCAHIN
+
+
+    ## for logging
+    miner_log = open("miner.log", "a+")
+
+
+    prev_hash = BLOCKCAHIN.blocks[-1].hashed_data().hexdigest()
+    timestamp = time.time()
+    new_block = Blockchain.Block(prev_hash, timestamp, transactions)
+    
+    # perform proof of work
+    #  by finding the nonce that give a number of zeros in the hash
+    new_block.nonce = 0
+
+    proof_of_work_diff = config.POW_DIFFICULTY
+    block_hash = new_block.hashed_data().hexdigest()
+    start_time = time.time()
+    number_of_hashes = 0
+    while block_hash[len(block_hash) - proof_of_work_diff:]!= "0"*proof_of_work_diff:
+        number_of_hashes += 1
+        current_nonce = new_block.nonce
+        new_nonce = current_nonce + 1
+        new_block.nonce = new_nonce
+        block_hash = new_block.hashed_data().hexdigest()
+
+    # time, number of hashes computed
+    miner_log.write("{},{}".format(time.time() - start_time, number_of_hashes))
+
+    BLOCKCAHIN.addBlock(new_block)
+    print("mined new block: ", BLOCKCAHIN.blocks[-1].hashed_data().hexdigest())
+
+    # Broadcast block
+    # BLOCKCHAING.addBlock(new_block)
+
+
     
 def transactions_listener(address, port):
     global PENDING_TRANSACTIONS
@@ -31,8 +67,8 @@ def handle_transaction(conn, addr):
         data = conn.recv(1024)
         if not data:
             break
-        PENDING_TRANSACTIONS.append(data)
-        if len(PENDING_TRANSACTIONS) >= 10:
+        PENDING_TRANSACTIONS.append(data.decode('utf-8'))
+        if len(PENDING_TRANSACTIONS) >= config.NUM_TRANSACTIONS:
             miner_process = Process(target=miner, args=([PENDING_TRANSACTIONS]))
             miner_process.start()
             PENDING_TRANSACTIONS = []

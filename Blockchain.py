@@ -6,7 +6,7 @@ class Blockchain:
         self.blocks = []
         # create genisis block
         # it has non transactions whatsoever
-        self.blocks.append(Block("0", time.time(), [], nonce="0"))
+        self.blocks.append(Block("0", time.time(), [], nonce=0))
 
     def addBlock(self, block):
         self.blocks.append(block)
@@ -21,8 +21,8 @@ class Block:
     
     def hashed_data(self):  
         rtn = ""
-        rtn += self.prev_hash + "-" + self.nonce + "-".join(self.transactions)
-        return hashlib.sha256(rtn)
+        rtn += self.prev_hash + "-" + str(self.nonce) + "-".join(self.transactions)
+        return hashlib.sha256(rtn.encode('utf-8'))
 
     def add_transaction(self, transaction):
         self.transactions.append(transaction)
