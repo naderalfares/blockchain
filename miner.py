@@ -8,6 +8,14 @@ import logging
 import threading
 import copy
 
+
+# @Public feel free to work on these and do a pull request
+# TODOs:
+# 1. remove either LOCAL_MINER_ID or LOCAL_MINER_INFO, one can be derived from the other
+# 2. 
+
+
+
 # GLOBAL VARIABLES
 PENDING_TRANSACTIONS = []
 BLOCKCAHIN = Blockchain.Blockchain()
@@ -37,13 +45,11 @@ def miners_network():
             data = conn.recv(1024)
             if not data:
                 break
-
             # ACK client that transaction has been recived
             conn.sendall(b'ACK')
             BRODCAST_LOCK.acquire()
             MINERS_MSG = data.decode('utf-8')
             BRODCAST_LOCK.release()
-
 
 def broadcast_to_all_miners(block):
     for miner in config.MINERS_INFO:
@@ -54,9 +60,6 @@ def broadcast_to_all_miners(block):
             s.connect((miner["host_ip"], miner["port"]))
             s.sendall(str(block).encode('utf-8'))
             data = s.recv(1024) # wait for ack from server
-
-
-
 
 def miner():
     # TODO:
@@ -160,24 +163,56 @@ def clients(address, port):
             s.sendall("{}".format(str(transactions)).encode('utf-8'))
             data = s.recv(1024)
 
-        
-if __name__ == "__main__":
 
-    HOST = "localhost"
-    PORT = config.PORT
+def deploy_server(local_id, local_info):
+
+    # setup the local address for this process
+    config.LOCAL_MINER_ID   = local_id
+    config.LOCAL_MINER_INFO = local_info
+
 
     # Start Miner Thread
     miner_thread = threading.Thread(name='Miner', target=miner, args=())
     miner_thread.start()
 
-    server_listener = threading.Thread(name='Listener', target=transactions_listener, args=(HOST, PORT))
+    # Start miner network listener
+    network_listener = threading.Thread(name="MinersListener", target=miners_network)
+    network_listener.start()
+
+
+    # wait to make sure all above is setup and ready to listen
+
+    time.sleep(1)
+    # Start listening to transactions from client
+    server_listener = threading.Thread(name='ClientListener', target=transactions_listener, args=(HOST, PORT))
     server_listener.start()
 
 
+def deploy_testig_client():
+    for miner in config.MINERS_INFO:
+        client_proc = Process(target=clients, args=(miner["host_ip"],miner["port"]))
+        client_proc.start()
+
+        
+if __name__ == "__main__":
+
+    '''
+    The following script is to test the framework
+        locally. To run a server, use the server.py script instead
+    '''
+
+    for miner in config.MINERS_INFO:
+        _proc = Process(target=deploy_server, args=(miner["id"], miner))
+
+    # just to make sure that all servers are deployed
+    # before deploying all clients
+    time.sleep(3)
+    _ = Process(target=deploy_testig_client, args=(,)).start()
+
     # test clients sending transactions
-    time.sleep(2)
-    clients_process = Process(target=clients, args=(HOST,PORT))
-    clients_process.start()
+    # time.sleep(2)
+    # clients_process = Process(target=clients, args=(HOST,PORT))
+    # clients_process.start()
 
 
     
