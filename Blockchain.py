@@ -27,6 +27,12 @@ class Block:
     def add_transaction(self, transaction):
         self.transactions.append(transaction)
 
+    def __str__(self) -> str:
+        return "{}///{}///{}///{}".format(self.prev_hash,/
+                                    str(self.timestamp),/
+                                    str(self.transactions),/
+                                    self.nonce)
+
 class Transaction:
     def __init__(self, sender, reciver, amount):
         self.sender = sender

@@ -11,14 +11,53 @@ import copy
 # GLOBAL VARIABLES
 PENDING_TRANSACTIONS = []
 BLOCKCAHIN = Blockchain.Blockchain()
+MINERS_MSG = None
+
+# Condition Variable to maintain nubmer of transactions
+# before mining
+MINE_CV = threading.Condition()
+BRODCAST_LOCK = threading.Lock()
+
 
 logging.basicConfig(level=logging.DEBUG,
                     format='(%(threadName)-9s) %(message)s',)
 
 
-# Condition Variable to maintain nubmer of transactions
-# before mining
-MINE_CV = threading.Condition()
+# a thread that manages miners communications
+# this is typically used for when a block is mined 
+def miners_network():
+    logging.debug("listining for miners...")
+    address = config.LOCAL_MINER_INFO["host_ip"]
+    port    = config.LOCAL_MINER_INFO["port"]
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind((address, port))
+        s.listen()
+        while True:
+            conn, addr = s.accept()
+            data = conn.recv(1024)
+            if not data:
+                break
+
+            # ACK client that transaction has been recived
+            conn.sendall(b'ACK')
+            BRODCAST_LOCK.acquire()
+            MINERS_MSG = data.decode('utf-8')
+            BRODCAST_LOCK.release()
+
+
+def broadcast_to_all_miners(block):
+    for miner in config.MINERS_INFO:
+        # skip if
+        if miner["id"] == config.LOCAL_MINER_ID:
+            continue
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.connect((miner["host_ip"], miner["port"]))
+            s.sendall(str(block).encode('utf-8'))
+            data = s.recv(1024) # wait for ack from server
+
+
+
+
 def miner():
     # TODO:
     # Create a new block and add transactions to the new block
@@ -60,13 +99,27 @@ def miner():
                 number_of_hashes += 1
                 current_nonce = new_block.nonce
                 new_nonce = current_nonce + 1
+
+                #  get nonce of the new mined block, if recived from other miners
+                BRODCAST_LOCK.acquire()
+                if MINERS_MSG is not None:
+                    # get the nonce of mined block
+                    new_nonce = int(MINERS_MSG.split("///")[-1])
+                BRODCAST_LOCK.release()
+
                 new_block.nonce = new_nonce
                 block_hash = new_block.hashed_data().hexdigest()
 
             BLOCKCAHIN.addBlock(new_block)
             logging.debug("mined new block in {:.2f}s: {}".format(time.time() - start_time, BLOCKCAHIN.blocks[-1].hashed_data().hexdigest()))
 
-            # TODO: Broadcast block
+            BRODCAST_LOCK.acquire()
+            # if local miner 'solved' the hash, broadcast to others new block
+            if MINERS_MSG is None:
+                threading.Thread(target=broadcast_to_all_miners, args=(new_block,)).start()
+            else: # recived the block from other miner
+                MINERS_MSG = None
+            BRODCAST_LOCK.release()
 
 
 def transactions_listener(address, port):
@@ -88,6 +141,7 @@ def handle_transaction(conn, addr):
         if not data:
             break
 
+        # ACK client that transaction has been recived
         conn.sendall(b'ACK')
 
         MINE_CV.acquire()
@@ -95,9 +149,7 @@ def handle_transaction(conn, addr):
         MINE_CV.notifyAll()
         MINE_CV.release()
 
-        # ACK client that transaction has been recived
-
-
+    
 def clients(address, port):
     logging.debug("client process started...")
     count = 20
