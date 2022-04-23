@@ -10,10 +10,11 @@ import copy
 
 
 # @Public feel free to work on these and do a pull request
-# TODOs:
-# 1. remove either LOCAL_MINER_ID or LOCAL_MINER_INFO, one can be derived from the other
-# 2. 
-
+# stars representes importance of the TODO
+# TODO:
+# 1. * remove either LOCAL_MINER_ID or LOCAL_MINER_INFO, one can be derived from the other
+# 2. *** check if recived block from other miners have been recived before (maybe using timestamp?) 
+# 3. * servers commands to help new server to deployed mid operation
 
 
 # GLOBAL VARIABLES
@@ -24,7 +25,7 @@ MINERS_MSG = None
 # Condition Variable to maintain nubmer of transactions
 # before mining
 MINE_CV = threading.Condition()
-BRODCAST_LOCK = threading.Lock()
+BROADCAST_LOCK = threading.Lock()
 
 
 logging.basicConfig(level=logging.DEBUG,
@@ -34,6 +35,9 @@ logging.basicConfig(level=logging.DEBUG,
 # a thread that manages miners communications
 # this is typically used for when a block is mined 
 def miners_network():
+    global MINERS_MSG
+    global BROADCAST_LOCK
+
     logging.debug("listining for miners...")
     address = config.LOCAL_MINER_INFO["host_ip"]
     port    = config.LOCAL_MINER_INFO["port"]
@@ -47,9 +51,10 @@ def miners_network():
                 break
             # ACK client that transaction has been recived
             conn.sendall(b'ACK')
-            BRODCAST_LOCK.acquire()
+            logging.debug("recived blocked from other miners")
+            BROADCAST_LOCK.acquire()
             MINERS_MSG = data.decode('utf-8')
-            BRODCAST_LOCK.release()
+            BROADCAST_LOCK.release()
 
 def broadcast_to_all_miners(block):
     for miner in config.MINERS_INFO:
@@ -61,7 +66,7 @@ def broadcast_to_all_miners(block):
             s.sendall(str(block).encode('utf-8'))
             data = s.recv(1024) # wait for ack from server
 
-def miner():
+def miner_thread():
     # TODO:
     # Create a new block and add transactions to the new block
     # perform proof of work
@@ -69,6 +74,8 @@ def miner():
     global BLOCKCAHIN
     global PENDING_TRANSACTIONS
     global MINE_CV
+    global MINERS_MSG
+    global BROADCAST_LOCK
 
 
     logging.debug("Miner thread started...")
@@ -104,11 +111,11 @@ def miner():
                 new_nonce = current_nonce + 1
 
                 #  get nonce of the new mined block, if recived from other miners
-                BRODCAST_LOCK.acquire()
+                BROADCAST_LOCK.acquire()
                 if MINERS_MSG is not None:
                     # get the nonce of mined block
                     new_nonce = int(MINERS_MSG.split("///")[-1])
-                BRODCAST_LOCK.release()
+                BROADCAST_LOCK.release()
 
                 new_block.nonce = new_nonce
                 block_hash = new_block.hashed_data().hexdigest()
@@ -116,13 +123,13 @@ def miner():
             BLOCKCAHIN.addBlock(new_block)
             logging.debug("mined new block in {:.2f}s: {}".format(time.time() - start_time, BLOCKCAHIN.blocks[-1].hashed_data().hexdigest()))
 
-            BRODCAST_LOCK.acquire()
+            BROADCAST_LOCK.acquire()
             # if local miner 'solved' the hash, broadcast to others new block
             if MINERS_MSG is None:
                 threading.Thread(target=broadcast_to_all_miners, args=(new_block,)).start()
             else: # recived the block from other miner
                 MINERS_MSG = None
-            BRODCAST_LOCK.release()
+            BROADCAST_LOCK.release()
 
 
 def transactions_listener(address, port):
@@ -169,12 +176,14 @@ def deploy_server(local_id, local_info):
     # setup the local address for this process
     config.LOCAL_MINER_ID   = local_id
     config.LOCAL_MINER_INFO = local_info
-
+    HOST = config.LOCAL_MINER_INFO["host_ip"]
+    PORT = config.LOCAL_MINER_INFO["port"]
+    CLIENT_PORT = config.LOCAL_MINER_INFO["client_port"]
 
     # Start Miner Thread
-    miner_thread = threading.Thread(name='Miner', target=miner, args=())
-    miner_thread.start()
-
+    local_miner_thread = threading.Thread(name='miner', target=miner_thread, args=())
+    local_miner_thread.start()
+    
     # Start miner network listener
     network_listener = threading.Thread(name="MinersListener", target=miners_network)
     network_listener.start()
@@ -184,13 +193,13 @@ def deploy_server(local_id, local_info):
 
     time.sleep(1)
     # Start listening to transactions from client
-    server_listener = threading.Thread(name='ClientListener', target=transactions_listener, args=(HOST, PORT))
+    server_listener = threading.Thread(name='ClientListener', target=transactions_listener, args=(HOST, CLIENT_PORT))
     server_listener.start()
 
 
-def deploy_testig_client():
-    for miner in config.MINERS_INFO:
-        client_proc = Process(target=clients, args=(miner["host_ip"],miner["port"]))
+def deploy_testing_clients():
+    for _miner_info in config.MINERS_INFO:
+        client_proc = Process(target=clients, args=(_miner_info["host_ip"], _miner_info["client_port"]))
         client_proc.start()
 
         
@@ -201,18 +210,15 @@ if __name__ == "__main__":
         locally. To run a server, use the server.py script instead
     '''
 
-    for miner in config.MINERS_INFO:
-        _proc = Process(target=deploy_server, args=(miner["id"], miner))
+    for _miner_info in config.MINERS_INFO:
+        _proc = Process(target=deploy_server, args=(_miner_info["id"], _miner_info))
+        _proc.start()
 
     # just to make sure that all servers are deployed
     # before deploying all clients
-    time.sleep(3)
-    _ = Process(target=deploy_testig_client, args=(,)).start()
+    # time.sleep(3)
+    # _ = Process(target=deploy_testig_client, args=()).start()
 
     # test clients sending transactions
-    # time.sleep(2)
-    # clients_process = Process(target=clients, args=(HOST,PORT))
-    # clients_process.start()
-
-
-    
+    time.sleep(2)
+    deploy_testing_clients()

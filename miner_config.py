@@ -1,9 +1,7 @@
-TRANSACTIONS_PER_BLOCK = 10
+#
+# BLOCKCHAIN CONFIG FILE
+#
 
-
-# update this to the server's IP address and port number
-HOST = "localhost"
-PORT = 65432
 
 # The intger represents the number of zeros
 # that a hash has to have at the end to be
@@ -16,39 +14,52 @@ POW_DIFFICULTY = 4
 NUM_TRANSACTIONS = 10
 
 
-
-
 # information of all miners
-
-
 # THIS SHOULD BE DIFFERENT ACCROSS ALL MINERS!!!
 LOCAL_MINER_ID = 0
 LOCAL_MINER_INFO = {
 		"id"	  : 0,
 		"host_ip"    : "localhost",
-		"port"    : 9000	
+		"port"    : 9000,	
+        "client_port" : 65432
 }
 
+
+# SINGLE MINER 
 MINERS_INFO = [
-	{
-		"id"	  : 0,
-		"host_ip"    : "localhost",
-		"port"    : 9000	
-	},
-		{
-		"id"	  : 1,
-		"host_ip"    : "localhost",
-		"port"    : 9001	
-	},
-		{
-		"id" 	  : 2,
-		"host_ip"    : "localhost",
-		"port"    : 9002	
-	},
-		{
-		"id"	  : 3,
-		"host_ip"    : "localhost",
-		"port"    : 9003	
-	}
+
+ 	{
+ 		"id"	  : 0,
+ 		"host_ip"    : "localhost",
+ 		"port"    : 9000,
+        "client_port" : 65432
+ 	}
 
 ]
+
+
+# MULTIPLE MINERS EXAMPLE
+
+# MINERS_INFO = [
+# 	{
+# 		"id"	  : 0,
+# 		"host_ip"    : "localhost",
+# 		"port"    : 9000	
+# 	},
+# 		{
+# 		"id"	  : 1,
+# 		"host_ip"    : "localhost",
+# 		"port"    : 9001	
+# 	},
+# 		{
+# 		"id" 	  : 2,
+# 		"host_ip"    : "localhost",
+# 		"port"    : 9002	
+# 	},
+# 		{
+# 		"id"	  : 3,
+# 		"host_ip"    : "localhost",
+# 		"port"    : 9003	
+# 	}
+# 
+# ]

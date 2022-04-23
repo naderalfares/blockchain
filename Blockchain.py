@@ -28,9 +28,9 @@ class Block:
         self.transactions.append(transaction)
 
     def __str__(self) -> str:
-        return "{}///{}///{}///{}".format(self.prev_hash,/
-                                    str(self.timestamp),/
-                                    str(self.transactions),/
+        return "{}///{}///{}///{}".format(self.prev_hash,\
+                                    str(self.timestamp),\
+                                    str(self.transactions),\
                                     self.nonce)
 
 class Transaction:
