@@ -19,7 +19,7 @@ import copy
 
 # GLOBAL VARIABLES
 PENDING_TRANSACTIONS = []
-BLOCKCAHIN = Blockchain.Blockchain()s
+BLOCKCAHIN = Blockchain.Blockchain()
 MINERS_MSG = None
 
 # Condition Variable to maintain nubmer of transactions
@@ -67,7 +67,7 @@ def broadcast_to_all_miners(block):
             data = s.recv(1024) # wait for ack from server
 
 
-def hashing_worker(block, hashing_range, found_blocks):
+def hashing_worker(block, hashing_range, min_val, max_val, found_blocks):
     temp_block = copy.deepcopy(block)
     logging.debug("worker thread started {}, {}".format(min_val, max_val))
     for i in hashing_range:
@@ -82,7 +82,7 @@ def hashing_worker(block, hashing_range, found_blocks):
             break
 
 
-def miner_thread():
+def miner_thread(host, clients_port):
     # TODO:
     # Create a new block and add transactions to the new block
     # perform proof of work
@@ -95,6 +95,12 @@ def miner_thread():
 
 
     logging.debug("Miner thread started...")
+
+    # this is to listen to other miners
+    # here we would know if a block has been mined by others
+    deploy_miners_listener()
+
+    deploy_clients_listener(host, clients_port)
 
     with MINE_CV:
         while True:
@@ -117,12 +123,13 @@ def miner_thread():
             #  by finding the nonce that give a number of zeros in the hash
             manager = Manager()
             found_blocks = manager.list()
-
+            start_nonce = 0
+            start_time = time.time()
             while len(found_blocks) < 1:
                 logging.debug("doing rounds for range {} to {}".format(start_nonce, start_nonce + (config.HASHING_INC * config.NUM_HASHING_WORKERS)))
-                worker_threads = []
+                worker_procs = []
                 for thread_id in range(config.NUM_HASHING_WORKERS):
-                    worker_procs.append(multiprocessing.Process(target= hashing_worker, args=(new_block, range(start_nonce, start_nonce + config.HASHING_INC), start_nonce, start_nonce + config.HASHING_INC, found_blocks)))
+                    worker_procs.append(Process(target= hashing_worker, args=(new_block, range(start_nonce, start_nonce + config.HASHING_INC), start_nonce, start_nonce + config.HASHING_INC, found_blocks)))
                     start_nonce += config.HASHING_INC
 
                 for worker in worker_procs:
@@ -202,20 +209,22 @@ def deploy_server(local_id, local_info):
     CLIENT_PORT = config.LOCAL_MINER_INFO["client_port"]
 
     # Start Miner Thread
-    local_miner_thread = threading.Thread(name='miner', target=miner_thread, args=())
+    local_miner_thread = threading.Thread(name='miner', target=miner_thread, args=(HOST, CLIENT_PORT))
     local_miner_thread.start()
     
+
+def deploy_miners_listener():
     # Start miner network listener
     network_listener = threading.Thread(name="MinersListener", target=miners_network)
     network_listener.start()
 
 
-    # wait to make sure all above is setup and ready to listen
-
-    time.sleep(1)
+def deploy_clients_listener(host, client_port):
     # Start listening to transactions from client
-    server_listener = threading.Thread(name='ClientListener', target=transactions_listener, args=(HOST, CLIENT_PORT))
+    server_listener = threading.Thread(name='ClientListener', target=transactions_listener, args=(host, client_port))
     server_listener.start()
+
+
 
 
 def deploy_testing_clients():
