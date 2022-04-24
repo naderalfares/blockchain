@@ -9,9 +9,17 @@
 POW_DIFFICULTY = 4
 
 
+
 # Start mining when the this number
 # of transactions have reached
 NUM_TRANSACTIONS = 10
+
+# Parallelism
+# these run in parallel
+NUM_HASHING_WORKERS = 4
+# the range of nonce value to try in every 
+# epoch of workers running in parallel
+HASHING_INC         = 1000
 
 
 # information of all miners
