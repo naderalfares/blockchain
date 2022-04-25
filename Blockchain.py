@@ -1,5 +1,6 @@
 import hashlib
 import time
+import config
 
 class Blockchain:
     def __init__(self):
@@ -16,12 +17,30 @@ class Block:
     def __init__(self, prev_hash, timestamp, transactions, nonce=None):
         self.prev_hash = prev_hash
         self.timestamp = timestamp
-        self.transactions = transactions
+
+        if config.TRANSACTIONS_HASHING == "simple":
+            self.transactions = transactions
+        elif config.TRANSACTIONS_HASHING == "merkle":
+            self.transactions = MerkleTree(transactions)
+        else:
+            print("error: config.TRANSACTIONS_HASHING")
+            exit(1)
+
         self.nonce = nonce
     
     def hashed_data(self):  
         rtn = ""
-        rtn += self.prev_hash + "-" + str(self.nonce) + "-".join(self.transactions)
+        # hash the transactions
+        # if simple, include every transaction
+        # else only include the root hash of the merkle tree
+        if config.TRANSACTIONS_HASHING == "simple":
+            rtn += self.prev_hash + "-" + str(self.nonce) + "-".join(self.transactions)
+        elif config.TRANSACTIONS_HASHING == "merkle":
+            rtn += self.prev_hash + "-" + str(self.nonce) + "-" + self.transactions.mt_root_hash
+        else:
+            print("error: config.TRANSACTIONS_HASHING")
+            exit(1)
+
         return hashlib.sha256(rtn.encode('utf-8'))
 
     def add_transaction(self, transaction):
