@@ -83,10 +83,6 @@ def hashing_worker(block, hashing_range, min_val, max_val, found_blocks):
 
 
 def miner_thread(host, clients_port):
-    # TODO:
-    # Create a new block and add transactions to the new block
-    # perform proof of work
-    # advertise to other miners
     global BLOCKCAHIN
     global PENDING_TRANSACTIONS
     global MINE_CV
@@ -225,8 +221,6 @@ def deploy_clients_listener(host, client_port):
     server_listener.start()
 
 
-
-
 def deploy_testing_clients():
     for _miner_info in config.MINERS_INFO:
         client_proc = Process(target=clients, args=(_miner_info["host_ip"], _miner_info["client_port"]))
@@ -244,10 +238,6 @@ if __name__ == "__main__":
         _proc = Process(target=deploy_server, args=(_miner_info["id"], _miner_info))
         _proc.start()
 
-    # just to make sure that all servers are deployed
-    # before deploying all clients
-    # time.sleep(3)
-    # _ = Process(target=deploy_testig_client, args=()).start()
 
     # test clients sending transactions
     time.sleep(2)
