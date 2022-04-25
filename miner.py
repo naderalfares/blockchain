@@ -7,7 +7,7 @@ import random
 import logging
 import threading
 import copy
-
+from MerkleTree import *
 
 # @Public feel free to work on these and do a pull request
 # stars representes importance of the TODO

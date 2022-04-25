@@ -1,13 +1,12 @@
 import hashlib
 import time
-import config
-
+import miner_config as config
+from MerkleTree import *
 class Blockchain:
     def __init__(self):
         self.blocks = []
         # create genisis block
-        # it has non transactions whatsoever
-        self.blocks.append(Block("0", time.time(), [], nonce=0))
+        self.blocks.append(Block("0", time.time(), ["A"], nonce=0))
 
     def addBlock(self, block):
         self.blocks.append(block)
@@ -21,7 +20,7 @@ class Block:
         if config.TRANSACTIONS_HASHING == "simple":
             self.transactions = transactions
         elif config.TRANSACTIONS_HASHING == "merkle":
-            self.transactions = MerkleTree(transactions)
+            self.transactions = MerkleTreeHash(transactions)
         else:
             print("error: config.TRANSACTIONS_HASHING")
             exit(1)
