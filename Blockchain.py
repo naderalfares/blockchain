@@ -1,12 +1,12 @@
 import hashlib
 import time
-
+import miner_config as config
+from MerkleTree import *
 class Blockchain:
     def __init__(self):
         self.blocks = []
         # create genisis block
-        # it has non transactions whatsoever
-        self.blocks.append(Block("0", time.time(), [], nonce=0))
+        self.blocks.append(Block("0", time.time(), ["A"], nonce=0))
 
     def addBlock(self, block):
         self.blocks.append(block)
@@ -16,12 +16,30 @@ class Block:
     def __init__(self, prev_hash, timestamp, transactions, nonce=None):
         self.prev_hash = prev_hash
         self.timestamp = timestamp
-        self.transactions = transactions
+
+        if config.TRANSACTIONS_HASHING == "simple":
+            self.transactions = transactions
+        elif config.TRANSACTIONS_HASHING == "merkle":
+            self.transactions = MerkleTreeHash(transactions)
+        else:
+            print("error: config.TRANSACTIONS_HASHING")
+            exit(1)
+
         self.nonce = nonce
     
     def hashed_data(self):  
         rtn = ""
-        rtn += self.prev_hash + "-" + str(self.nonce) + "-".join(self.transactions)
+        # hash the transactions
+        # if simple, include every transaction
+        # else only include the root hash of the merkle tree
+        if config.TRANSACTIONS_HASHING == "simple":
+            rtn += self.prev_hash + "-" + str(self.nonce) + "-".join(self.transactions)
+        elif config.TRANSACTIONS_HASHING == "merkle":
+            rtn += self.prev_hash + "-" + str(self.nonce) + "-" + self.transactions.mt_root_hash
+        else:
+            print("error: config.TRANSACTIONS_HASHING")
+            exit(1)
+
         return hashlib.sha256(rtn.encode('utf-8'))
 
     def add_transaction(self, transaction):
